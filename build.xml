@@ -1,0 +1,197 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<project name="Addon Config" default="AddonConfig">
+
+	<property name="env.prompt" value=" :" />
+
+	<target name="AddonConfig">
+	
+		<input 
+			propertyName="project.path" 
+			defaultValue="${application.startdir}" 
+			message=">> Enter path to create project" 
+			promptChar="${env.prompt}"	/>
+			
+		<input
+			propertyName="project.namespace"
+			message=">> Enter a short (2-4 letters) namespace for addon" 
+			promptChar="${env.prompt}"	/>		
+			
+		<input
+			propertyName="project.name"
+			message=">> Enter one-word name for addon (underscores are okay) (do NOT include namespace)" 
+			promptChar="${env.prompt}"	/>
+			
+		<input
+			propertyName="project.abbrev"
+			message=">> Enter short (5-6 letters) abbreviation for addon" 
+			promptChar="${env.prompt}"	/>
+			
+		<input 
+			propertyName="project.friendlyname"
+			message=">> Enter a friendly name for the addon" 
+			promptChar="${env.prompt}"	/>	
+			
+		<input 
+			propertyName="project.description"
+			message=">> Enter a short description for the addon" 
+			promptChar="${env.prompt}"	/>
+			
+		<input 
+			propertyName="project.addon_type"
+			defaultValue="module"
+			message=">> Is project a plugin, a module, or neither? (default is module)"
+			validArgs="plugin,module,neither" 
+			promptChar="${env.prompt}"	/>
+			
+		<if>
+			<equals arg1="${project.addon_type}" arg2="module" />
+			<then>
+				<input
+					propertyName="project.hascp"
+					defaultValue="n"
+					message=">> Does module have a CP backend? (Default n)" 
+					validArgs="n,y" 
+					promptChar="${env.prompt}" />
+				<input
+					propertyName="project.hastab"
+					defaultValue="n"
+					message=">> Does module have a Publish tab? (Default n)" 
+					validArgs="n,y" 
+					promptChar="${env.prompt}" />
+			</then>
+		</if>
+			
+		<input 
+			propertyName="project.incfieldtype"
+			defaultValue="yes"
+			message=">> Include fieldtype?"
+			validArgs="yes,no" 
+			promptChar="${env.prompt}"	/>	
+			
+		<input 
+			propertyName="project.incextension"
+			defaultValue="yes"
+			message=">> Include extension?"
+			validArgs="yes,no" 
+			promptChar="${env.prompt}"	/>	
+			
+		<input 
+			propertyName="project.extrascaffold"
+			defaultValue="yes"
+			message=">> Create extra scaffolding? (/models, /views, /libraries/vendor, and a composer.json file in /libraries/)"
+			validArgs="yes,no" 
+			promptChar="${env.prompt}"	/>
+			
+			
+
+		<NameCasing mynamespace="${project.namespace}" myname="${project.name}" />
+		<ExcludeFiles projtype="${project.addon_type}" includeFt="${project.incfieldtype}" includeExt="${project.incextension}" />
+		
+		<copy todir="${project.path}/${project.lowername}" overwrite="true">
+		  <fileset dir="." excludes="${project.excludefiles},build.xml" />
+		  <filterchain>
+			<expandproperties />
+		  </filterchain>
+		</copy>
+	
+		<if>
+			<equals arg1="${project.addon_type}" arg2="module" />
+			<then>	
+				<move 	file="${project.path}/${project.lowername}/_base_lang.php" 
+						tofile="${project.path}/${project.lowername}/language/english/base_lang.php" 
+						overwrite="true" />
+			</then>
+		</if>
+
+		<move todir="${project.path}/${project.lowername}" overwrite="true">
+			<fileset dir="${project.path}/${project.lowername}" includes="**/*base*.php" />
+			<mapper type="regexp" from="^(.*)base(.*)$" to="\1${project.lowername}\2" />
+		</move>
+
+		<if>
+			<equals arg1="${project.extrascaffold}" arg2="yes" />
+			<then>
+
+				<mkdir dir="${project.path}/${project.lowername}/views" />
+					<touch file="${project.path}/${project.lowername}/views/.gitkeep" />
+				<mkdir dir="${project.path}/${project.lowername}/models" />
+					<touch file="${project.path}/${project.lowername}/models/.gitkeep" />
+				<mkdir dir="${project.path}/${project.lowername}/libraries/vendor" />
+					<touch file="${project.path}/${project.lowername}/libraries/vendor/.gitkeep" />
+
+				<touch file="${project.path}/${project.lowername}/libraries/composer.json" />
+				<append destFile="${project.path}/${project.lowername}/libraries/composer.json">
+					{
+						"require": {
+							"thing/thing": "0.1.*@dev",
+							}
+					}
+				</append>
+			</then>
+		</if>
+
+	</target>
+
+	<adhoc-task name="SetProjectDate"><![CDATA[
+		class SetProjectDateTask extends Task {
+			function main() {	
+				$mydate = 'on '.date('Y-m-d').' at '.date('H:m');
+				$this->project->setProperty("project.date",$mydate);
+				}
+		}
+		]]>
+	</adhoc-task>
+
+	<adhoc-task name="NameCasing"><![CDATA[
+		class NameCasing extends Task {
+			private $mynamespace;
+			private $myname;
+			
+			function setMynamespace($mynamespace) {
+				$this->mynamespace = $mynamespace;
+				}
+			
+			function setMyname($myname) {
+				$this->myname = $myname;
+				}
+
+			function main() {
+				$pname = strtolower("{$this->mynamespace}_{$this->myname}");
+				$this->project->setProperty( "project.lowername" , $pname );
+				$this->project->setProperty( "project.capname" , ucfirst($pname) );
+				$this->project->setProperty( "project.ucnamespace" , strtoupper($mynamespace) );
+				}
+		}
+		]]>
+	</adhoc-task>
+	
+	<adhoc-task name="ExcludeFiles"><![CDATA[
+		class ExcludeFiles extends Task {
+			private $projtype;
+			private $includeFt;
+			private $includeExt;
+			
+			function setProjtype($projtype) {
+				$this->projtype = $projtype;
+				}
+			
+			function setIncludeFt($includeFt) {
+				$this->includeFt = $includeFt;
+				}
+				
+			function setIncludeExt($includeExt) {
+				$this->includeExt = $includeExt;
+				}
+
+			function main() {
+				$exclude = array('plugin' => 'm*.base.php,upd.base.php,tab.base.php,language/**', 'module' => 'pi.base.php');
+				$output = ($this->projtype == 'neither') ? implode(',',$exclude) : $exclude["{$this->projtype}"];
+				$output .= ($this->includeFt != 'yes') ? ',ft.base.php' : '';
+				$output .= ($this->includeExt != 'yes') ? ',ext.base.php' : '';
+				$this->project->setProperty( "project.excludefiles" , $output );
+				}
+		}
+		]]>
+	</adhoc-task>
+
+</project>

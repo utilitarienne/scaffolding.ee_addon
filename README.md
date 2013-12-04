@@ -1,4 +1,3 @@
-scaffolding.ee_addon
-====================
+${project.friendlyname}
 
-Scaffolding for EE addons -- includes Phing script
+${project.description}
